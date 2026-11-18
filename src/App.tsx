@@ -19,6 +19,7 @@ import { DashboardView } from './components/DashboardView';
 import { PersianCalendar } from './components/PersianCalendar';
 import { ConversationalLogger } from './components/ConversationalLogger';
 import { AddActivityModal } from './components/AddActivityModal';
+import { DayDetailsModal } from './components/DayDetailsModal';
 import { ArchiveView } from './components/ArchiveView';
 import { StatsView } from './components/StatsView';
 import { SettingsView } from './components/SettingsView';
@@ -45,6 +46,8 @@ const MainApp: React.FC = () => {
   const [isLoggerOpen, setIsLoggerOpen] = useState<boolean>(false);
   const [isAddActivityOpen, setIsAddActivityOpen] = useState<boolean>(false);
   const [activityTargetDate, setActivityTargetDate] = useState<string>(getTodayStandardDate());
+  const [isDayDetailsOpen, setIsDayDetailsOpen] = useState<boolean>(false);
+  const [dayDetailsDate, setDayDetailsDate] = useState<string>(getTodayStandardDate());
 
   // Live queries from Dexie IndexedDB
   const reports = useLiveQuery(() => db.reports.toArray()) || [];
@@ -70,6 +73,12 @@ const MainApp: React.FC = () => {
   const handleOpenAddActivity = (date?: string) => {
     setActivityTargetDate(date || todayStr);
     setIsAddActivityOpen(true);
+  };
+
+  const handleOpenDayDetails = (date: string) => {
+    setDayDetailsDate(date);
+    setReportTargetDate(date);
+    setIsDayDetailsOpen(true);
   };
 
   const handleQuickAddActivity = async (title: string, type: 'work' | 'personal') => {
@@ -240,6 +249,23 @@ const MainApp: React.FC = () => {
           onClose={() => setIsAddActivityOpen(false)}
         />
 
+        {/* Modal for Day Details */}
+        <DayDetailsModal
+          isOpen={isDayDetailsOpen}
+          onClose={() => setIsDayDetailsOpen(false)}
+          date={dayDetailsDate}
+          report={reports.find(r => r.date === dayDetailsDate)}
+          activities={activities.filter(a => {
+            const r = reports.find(rep => rep.date === dayDetailsDate);
+            return a.reportId === r?.id;
+          })}
+          onToggleActivity={handleToggleActivityStatus}
+          onDeleteActivity={handleDeleteActivity}
+          onOpenAddModal={(date) => handleOpenAddActivity(date)}
+          onOpenConversationalReport={(date) => handleStartReport(date)}
+          onDeleteReport={handleDeleteReport}
+        />
+
         {/* Modal / Overlay for Conversational Logger */}
         {isLoggerOpen && (
           <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -262,6 +288,7 @@ const MainApp: React.FC = () => {
             reminderTime={reminder?.time || '22:00'}
             onStartReport={handleStartReport}
             onOpenAddActivity={() => handleOpenAddActivity(todayStr)}
+            onOpenDayDetails={handleOpenDayDetails}
             onDeleteActivity={handleDeleteActivity}
             onQuickAddActivity={handleQuickAddActivity}
             onNavigateTab={(t) => setActiveTab(t as Tab)}
@@ -276,6 +303,7 @@ const MainApp: React.FC = () => {
               selectedDate={reportTargetDate}
               onSelectDate={(d) => setReportTargetDate(d)}
               onOpenReport={handleStartReport}
+              onOpenDayDetails={handleOpenDayDetails}
             />
 
             {/* Selected day activity preview */}

@@ -443,3 +443,4 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
     </div>
   );
 };
+

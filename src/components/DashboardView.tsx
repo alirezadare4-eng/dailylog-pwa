@@ -26,6 +26,7 @@ interface DashboardViewProps {
   reminderTime: string;
   onStartReport: (date: string) => void;
   onOpenAddActivity: () => void;
+  onOpenDayDetails: (date: string) => void;
   onDeleteActivity: (id: string) => void;
   onQuickAddActivity: (title: string, type: 'work' | 'personal') => Promise<void>;
   onNavigateTab: (tab: string) => void;
@@ -39,6 +40,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   reminderTime,
   onStartReport,
   onOpenAddActivity,
+  onOpenDayDetails,
   onDeleteActivity,
   onQuickAddActivity,
   onNavigateTab,
@@ -397,6 +399,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             selectedDate={selectedCalendarDate}
             onSelectDate={(date) => setSelectedCalendarDate(date)}
             onOpenReport={(date) => onStartReport(date)}
+            onOpenDayDetails={(date) => onOpenDayDetails(date)}
           />
 
           {/* Quick Actions Card */}

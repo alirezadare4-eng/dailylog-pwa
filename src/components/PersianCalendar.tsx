@@ -27,13 +27,15 @@ interface PersianCalendarProps {
   selectedDate: string; // YYYY-MM-DD
   onSelectDate: (date: string) => void;
   onOpenReport: (date: string) => void;
+  onOpenDayDetails?: (date: string) => void;
 }
 
 export const PersianCalendar: React.FC<PersianCalendarProps> = ({
   reports,
   selectedDate,
   onSelectDate,
-  onOpenReport
+  onOpenReport,
+  onOpenDayDetails
 }) => {
   const todayStandard = getTodayStandardDate();
   const todayJalali = gregorianToJalali(
@@ -169,7 +171,10 @@ export const PersianCalendar: React.FC<PersianCalendarProps> = ({
           return (
             <button
               key={`day-${day}`}
-              onClick={() => onSelectDate(dateStr)}
+              onClick={() => {
+                onSelectDate(dateStr);
+                onOpenDayDetails?.(dateStr);
+              }}
               className={`
                 h-11 sm:h-12 relative rounded-xl flex flex-col items-center justify-center transition-all duration-150
                 ${isSelected 
@@ -216,11 +221,17 @@ export const PersianCalendar: React.FC<PersianCalendarProps> = ({
         </div>
 
         <button
-          onClick={() => onOpenReport(selectedDate)}
+          onClick={() => {
+            if (onOpenDayDetails) {
+              onOpenDayDetails(selectedDate);
+            } else {
+              onOpenReport(selectedDate);
+            }
+          }}
           className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 font-medium hover:underline text-xs"
         >
           <Plus className="w-3.5 h-3.5" />
-          <span>مشاهده / ثبت برای تاریخ انتخابی</span>
+          <span>مشاهده و ثبت برای تاریخ انتخابی</span>
         </button>
       </div>
     </div>
