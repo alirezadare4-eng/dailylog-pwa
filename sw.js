@@ -1,9 +1,9 @@
-const CACHE_NAME = 'dailylog-v1';
+const CACHE_NAME = 'dailylog-v2';
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icons/icon-192.svg'
+  './',
+  './index.html',
+  './manifest.json',
+  './icons/icon-192.svg'
 ];
 
 self.addEventListener('install', (event) => {
