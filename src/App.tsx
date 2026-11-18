@@ -18,18 +18,33 @@ import { getTodayStandardDate } from './utils/jalali';
 import { DashboardView } from './components/DashboardView';
 import { PersianCalendar } from './components/PersianCalendar';
 import { ConversationalLogger } from './components/ConversationalLogger';
+import { AddActivityModal } from './components/AddActivityModal';
 import { ArchiveView } from './components/ArchiveView';
 import { StatsView } from './components/StatsView';
 import { SettingsView } from './components/SettingsView';
 import { checkAndTriggerReminder } from './services/reminderService';
+import { formatToJalali } from './utils/jalali';
 
 type Tab = 'home' | 'calendar' | 'report' | 'stats' | 'settings' | 'archive';
+
+const generateUUID = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
 
 const MainApp: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [reportTargetDate, setReportTargetDate] = useState<string>(getTodayStandardDate());
   const [isLoggerOpen, setIsLoggerOpen] = useState<boolean>(false);
+  const [isAddActivityOpen, setIsAddActivityOpen] = useState<boolean>(false);
+  const [activityTargetDate, setActivityTargetDate] = useState<string>(getTodayStandardDate());
 
   // Live queries from Dexie IndexedDB
   const reports = useLiveQuery(() => db.reports.toArray()) || [];
@@ -50,6 +65,51 @@ const MainApp: React.FC = () => {
   const handleStartReport = (date: string) => {
     setReportTargetDate(date);
     setIsLoggerOpen(true);
+  };
+
+  const handleOpenAddActivity = (date?: string) => {
+    setActivityTargetDate(date || todayStr);
+    setIsAddActivityOpen(true);
+  };
+
+  const handleQuickAddActivity = async (title: string, type: 'work' | 'personal') => {
+    const nowIso = new Date().toISOString();
+    let rep = await db.reports.where('date').equals(todayStr).first();
+    if (!rep) {
+      rep = {
+        id: generateUUID(),
+        userId: 'default-user',
+        date: todayStr,
+        jalaliDate: formatToJalali(todayStr),
+        summary: '',
+        tomorrowPlan: '',
+        isDraft: false,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        syncStatus: 'created'
+      };
+      await db.reports.put(rep);
+    }
+
+    const newAct: Activity = {
+      id: generateUUID(),
+      reportId: rep.id,
+      type,
+      title: title.trim(),
+      status: 'completed',
+      project: type === 'work' ? 'سپهریار' : undefined,
+      category: type === 'personal' ? 'روزمره' : undefined,
+      durationMinutes: 30,
+      priority: 'medium',
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      syncStatus: 'created'
+    };
+    await db.activities.put(newAct);
+  };
+
+  const handleDeleteActivity = async (activityId: string) => {
+    await db.activities.delete(activityId);
   };
 
   const handleToggleActivityStatus = async (activity: Activity) => {
@@ -153,11 +213,11 @@ const MainApp: React.FC = () => {
           {/* Quick Action Button & Theme Toggle */}
           <div className="flex items-center gap-2">
             <button
-              onClick={() => handleStartReport(todayStr)}
+              onClick={() => handleOpenAddActivity(todayStr)}
               className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm shadow-blue-500/20 transition-all active:scale-95"
             >
               <PlusCircle className="w-4 h-4" />
-              <span className="hidden sm:inline">گزارش روزانه</span>
+              <span className="hidden sm:inline">فعالیت جدید</span>
             </button>
 
             <button
@@ -173,6 +233,13 @@ const MainApp: React.FC = () => {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6 mb-20 md:mb-6">
+        {/* Modal for Direct Activity Creation */}
+        <AddActivityModal
+          isOpen={isAddActivityOpen}
+          targetDate={activityTargetDate}
+          onClose={() => setIsAddActivityOpen(false)}
+        />
+
         {/* Modal / Overlay for Conversational Logger */}
         {isLoggerOpen && (
           <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -194,6 +261,9 @@ const MainApp: React.FC = () => {
             allReports={reports}
             reminderTime={reminder?.time || '22:00'}
             onStartReport={handleStartReport}
+            onOpenAddActivity={() => handleOpenAddActivity(todayStr)}
+            onDeleteActivity={handleDeleteActivity}
+            onQuickAddActivity={handleQuickAddActivity}
             onNavigateTab={(t) => setActiveTab(t as Tab)}
             onToggleActivityStatus={handleToggleActivityStatus}
           />
@@ -214,19 +284,59 @@ const MainApp: React.FC = () => {
               const selectedActs = activities.filter(a => a.reportId === selectedRep?.id);
               return (
                 <div className="soft-card p-5">
-                  <h3 className="text-sm font-bold text-slate-800 dark:text-white mb-2">
-                    فعالیت‌های تاریخ {reportTargetDate}
-                  </h3>
+                  <div className="flex items-center justify-between mb-3 border-b border-slate-100 dark:border-slate-700/60 pb-2.5">
+                    <h3 className="text-sm font-bold text-slate-800 dark:text-white">
+                      فعالیت‌های تاریخ {formatToJalali(reportTargetDate)} ({reportTargetDate})
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleOpenAddActivity(reportTargetDate)}
+                        className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all"
+                      >
+                        + افزودن فعالیت
+                      </button>
+                      <button
+                        onClick={() => handleStartReport(reportTargetDate)}
+                        className="px-3 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-all"
+                      >
+                        گزارش گفت‌وگویی
+                      </button>
+                    </div>
+                  </div>
+
                   {selectedActs.length === 0 ? (
-                    <p className="text-xs text-slate-400">گزارشی برای این روز ثبت نشده است.</p>
+                    <div className="text-center py-6 text-slate-400 text-xs">
+                      گزارش یا فعالیتی برای این روز ثبت نشده است. با دکمه‌های بالا می‌توانید ثبت کنید.
+                    </div>
                   ) : (
                     <div className="space-y-2">
                       {selectedActs.map(a => (
-                        <div key={a.id} className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-xs">
-                          <span>{a.title}</span>
-                          <span className={a.status === 'completed' ? 'text-emerald-500 font-bold' : 'text-amber-500 font-bold'}>
-                            {a.status === 'completed' ? '✓ انجام شد' : '⚡ نیمه‌تمام'}
-                          </span>
+                        <div key={a.id} className="p-2.5 rounded-xl border border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-xs hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleToggleActivityStatus(a)}
+                              className={`w-5 h-5 rounded flex items-center justify-center ${
+                                a.status === 'completed' ? 'bg-emerald-500 text-white' : 'border border-slate-300 dark:border-slate-600 text-transparent'
+                              }`}
+                            >
+                              ✓
+                            </button>
+                            <span className={a.status === 'completed' ? 'line-through text-slate-400' : 'text-slate-800 dark:text-slate-200'}>
+                              {a.title}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={a.status === 'completed' ? 'text-emerald-500 font-bold' : 'text-amber-500 font-bold'}>
+                              {a.status === 'completed' ? 'انجام شد' : 'نیمه‌تمام'}
+                            </span>
+                            <button
+                              onClick={() => handleDeleteActivity(a.id)}
+                              className="text-slate-400 hover:text-red-500 p-1 rounded"
+                              title="حذف"
+                            >
+                              ×
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -244,6 +354,8 @@ const MainApp: React.FC = () => {
             onEditReport={handleStartReport}
             onDeleteReport={handleDeleteReport}
             onToggleActivity={handleToggleActivityStatus}
+            onDeleteActivity={handleDeleteActivity}
+            onAddActivityToDate={(d) => handleOpenAddActivity(d)}
           />
         )}
 

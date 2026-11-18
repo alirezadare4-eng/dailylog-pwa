@@ -58,6 +58,17 @@ const CONVERSATION_STEPS = [
   }
 ];
 
+const generateUUID = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+
 export const ConversationalLogger: React.FC<ConversationalLoggerProps> = ({
   targetDate,
   onFinished,
@@ -104,7 +115,7 @@ export const ConversationalLogger: React.FC<ConversationalLoggerProps> = ({
 
   // Save intermediate draft state so user never loses data if tab closes
   const saveDraftLocally = async (newAnswers: Record<number, string>, nextStep: number) => {
-    const reportId = existingReport?.id || crypto.randomUUID();
+    const reportId = existingReport?.id || generateUUID();
     const jalali = formatToJalali(targetDate);
 
     const draftReport: DailyReport = {
@@ -177,7 +188,7 @@ export const ConversationalLogger: React.FC<ConversationalLoggerProps> = ({
   const processAndFinalizeReport = async (finalAnswers: Record<number, string>, asDraft: boolean) => {
     setIsSubmitting(true);
     try {
-      const reportId = existingReport?.id || crypto.randomUUID();
+      const reportId = existingReport?.id || generateUUID();
       const jalali = formatToJalali(targetDate);
       const nowIso = new Date().toISOString();
 
@@ -205,9 +216,16 @@ export const ConversationalLogger: React.FC<ConversationalLoggerProps> = ({
       await db.reports.put(finalReport);
 
       // Parse structured activities from natural language
+      // Split on newline, Persian comma, English comma, semicolon, or standalone "و"
+      const delimiterRegex = /(?:\s+و\s+|\n+|[،,؛;\.]+)/;
+
       // 1. Parse Work activities
       if (workDoneText) {
-        const lines = workDoneText.split(/[\n،,و\.]+/).map(s => s.trim()).filter(s => s.length > 2);
+        const lines = workDoneText
+          .split(delimiterRegex)
+          .map(s => s.trim())
+          .filter(s => s.length > 1);
+
         for (const item of lines) {
           const isPending = statusText.includes(item) && (statusText.includes('ماند') || statusText.includes('نیمه') || statusText.includes('باقی'));
           
@@ -216,7 +234,7 @@ export const ConversationalLogger: React.FC<ConversationalLoggerProps> = ({
           else if (item.includes('توسعه') || item.includes('محصول')) projectMatch = 'توسعه محصول';
 
           const act: Activity = {
-            id: crypto.randomUUID(),
+            id: generateUUID(),
             reportId: reportId,
             type: 'work',
             title: item,
@@ -235,16 +253,20 @@ export const ConversationalLogger: React.FC<ConversationalLoggerProps> = ({
 
       // 2. Parse Personal activities
       if (personalText) {
-        const lines = personalText.split(/[\n،,و\.]+/).map(s => s.trim()).filter(s => s.length > 2);
+        const lines = personalText
+          .split(delimiterRegex)
+          .map(s => s.trim())
+          .filter(s => s.length > 1);
+
         for (const item of lines) {
           let cat = 'روزمره';
           if (item.includes('خانواده')) cat = 'خانواده';
           else if (item.includes('ورزش') || item.includes('پیاده')) cat = 'ورزش و سلامتی';
           else if (item.includes('مطالعه') || item.includes('فیلم') || item.includes('کتاب')) cat = 'تفریح و مطالعه';
-          else if (item.includes('خرید') || item.includes('پول') || item.includes('بانک')) cat = 'امور مالی';
+          else if (item.includes('خرید') || item.includes('پول') || item.includes('بانک') || item.includes('مالی')) cat = 'امور مالی';
 
           const act: Activity = {
-            id: crypto.randomUUID(),
+            id: generateUUID(),
             reportId: reportId,
             type: 'personal',
             title: item,
@@ -293,7 +315,12 @@ export const ConversationalLogger: React.FC<ConversationalLoggerProps> = ({
   };
 
   const handleSaveAsIncompleteDraft = async () => {
-    await processAndFinalizeReport(answers, true);
+    const currentAnswers = { ...answers };
+    if (inputText.trim()) {
+      currentAnswers[currentStep] = inputText.trim();
+      setAnswers(currentAnswers);
+    }
+    await processAndFinalizeReport(currentAnswers, true);
   };
 
   return (

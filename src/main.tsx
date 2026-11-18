@@ -10,7 +10,8 @@ initDatabaseDefaults().catch(console.error);
 // Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
+    const swPath = import.meta.env.BASE_URL ? `${import.meta.env.BASE_URL}sw.js`.replace('//', '/') : './sw.js';
+    navigator.serviceWorker.register(swPath)
       .then((reg) => console.log('ServiceWorker registered with scope: ', reg.scope))
       .catch((err) => console.log('ServiceWorker registration failed: ', err));
   });

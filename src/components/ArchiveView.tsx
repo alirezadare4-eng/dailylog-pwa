@@ -15,6 +15,7 @@ import {
 import { DailyReport, Activity } from '../types';
 import { formatToJalaliFull, toPersianDigits } from '../utils/jalali';
 import { printReportPDF } from '../utils/exportUtils';
+import { Plus } from 'lucide-react';
 
 interface ArchiveViewProps {
   reports: DailyReport[];
@@ -22,6 +23,8 @@ interface ArchiveViewProps {
   onEditReport: (date: string) => void;
   onDeleteReport: (reportId: string) => void;
   onToggleActivity: (act: Activity) => void;
+  onDeleteActivity?: (activityId: string) => void;
+  onAddActivityToDate?: (date: string) => void;
 }
 
 export const ArchiveView: React.FC<ArchiveViewProps> = ({
@@ -29,7 +32,9 @@ export const ArchiveView: React.FC<ArchiveViewProps> = ({
   activities,
   onEditReport,
   onDeleteReport,
-  onToggleActivity
+  onToggleActivity,
+  onDeleteActivity,
+  onAddActivityToDate
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'work' | 'personal'>('all');
@@ -165,7 +170,17 @@ export const ArchiveView: React.FC<ArchiveViewProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  {onAddActivityToDate && (
+                    <button
+                      onClick={() => onAddActivityToDate(report.date)}
+                      className="px-2 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-xs font-semibold hover:bg-blue-100 transition-colors flex items-center gap-1"
+                      title="افزودن فعالیت به این روز"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">افزودن فعالیت</span>
+                    </button>
+                  )}
                   <button
                     onClick={() => printReportPDF(report, dayActs)}
                     className="p-2 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
@@ -187,7 +202,7 @@ export const ArchiveView: React.FC<ArchiveViewProps> = ({
                       }
                     }}
                     className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
-                    title="حذف گزارش"
+                    title="حذف گزارش روزانه"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -237,13 +252,29 @@ export const ArchiveView: React.FC<ArchiveViewProps> = ({
                         </div>
                       </div>
 
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                        isDone 
-                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400' 
-                          : 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
-                      }`}>
-                        {isDone ? 'انجام شد' : 'نیمه‌تمام'}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                          isDone 
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400' 
+                            : 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
+                        }`}>
+                          {isDone ? 'انجام شد' : 'نیمه‌تمام'}
+                        </span>
+
+                        {onDeleteActivity && (
+                          <button
+                            onClick={() => {
+                              if (confirm(`آیا فعالیت «${act.title}» حذف شود؟`)) {
+                                onDeleteActivity(act.id);
+                              }
+                            }}
+                            className="p-1.5 text-slate-300 hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                            title="حذف این فعالیت"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}

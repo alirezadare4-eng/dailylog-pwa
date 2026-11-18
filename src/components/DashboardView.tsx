@@ -9,7 +9,10 @@ import {
   AlertCircle,
   FileSpreadsheet,
   Printer,
-  ChevronLeft
+  ChevronLeft,
+  Trash2,
+  Send,
+  Sparkles
 } from 'lucide-react';
 import { DailyReport, Activity } from '../types';
 import { formatToJalaliFull, toPersianDigits, getTodayStandardDate } from '../utils/jalali';
@@ -22,6 +25,9 @@ interface DashboardViewProps {
   allReports: DailyReport[];
   reminderTime: string;
   onStartReport: (date: string) => void;
+  onOpenAddActivity: () => void;
+  onDeleteActivity: (id: string) => void;
+  onQuickAddActivity: (title: string, type: 'work' | 'personal') => Promise<void>;
   onNavigateTab: (tab: string) => void;
   onToggleActivityStatus: (activity: Activity) => void;
 }
@@ -32,16 +38,34 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   allReports,
   reminderTime,
   onStartReport,
+  onOpenAddActivity,
+  onDeleteActivity,
+  onQuickAddActivity,
   onNavigateTab,
   onToggleActivityStatus
 }) => {
   const todayDate = getTodayStandardDate();
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string>(todayDate);
+  const [quickTitle, setQuickTitle] = useState('');
+  const [quickType, setQuickType] = useState<'work' | 'personal'>('work');
+  const [isQuickAdding, setIsQuickAdding] = useState(false);
 
   const personalActivities = todayActivities.filter(a => a.type === 'personal');
   const workActivities = todayActivities.filter(a => a.type === 'work');
   const completedActivities = todayActivities.filter(a => a.status === 'completed');
   const pendingActivities = todayActivities.filter(a => a.status !== 'completed');
+
+  const handleQuickSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickTitle.trim() || isQuickAdding) return;
+    setIsQuickAdding(true);
+    try {
+      await onQuickAddActivity(quickTitle.trim(), quickType);
+      setQuickTitle('');
+    } finally {
+      setIsQuickAdding(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -63,22 +87,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
             <button
-              onClick={() => onStartReport(todayDate)}
-              className="px-6 py-3.5 rounded-xl bg-white text-blue-700 font-bold text-sm shadow-lg shadow-black/10 hover:bg-blue-50 active:scale-95 transition-all flex items-center justify-center gap-2"
+              onClick={onOpenAddActivity}
+              className="px-5 py-3 rounded-xl bg-white text-blue-700 font-bold text-sm shadow-lg shadow-black/10 hover:bg-blue-50 active:scale-95 transition-all flex items-center justify-center gap-2"
             >
               <Plus className="w-5 h-5 text-blue-600" />
-              <span>ثبت گزارش امروز</span>
+              <span>افزودن فعالیت جدید</span>
+            </button>
+            <button
+              onClick={() => onStartReport(todayDate)}
+              className="px-4 py-3 rounded-xl bg-white/15 hover:bg-white/20 text-white font-medium text-sm backdrop-blur-md transition-all flex items-center justify-center gap-2"
+              title="ثبت مرحله‌به‌مرحله به شیوه گفت‌وگو"
+            >
+              <Sparkles className="w-4 h-4 text-amber-300" />
+              <span>گزارش هوشمند (گفت‌وگو)</span>
             </button>
             {todayReport && (
               <button
                 onClick={() => printReportPDF(todayReport, todayActivities)}
-                className="px-4 py-3.5 rounded-xl bg-white/15 hover:bg-white/20 text-white font-medium text-sm backdrop-blur-md transition-all flex items-center justify-center gap-2"
+                className="px-3.5 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-sm backdrop-blur-md transition-all flex items-center justify-center gap-1.5"
                 title="چاپ یا ذخیره PDF"
               >
                 <Printer className="w-4 h-4" />
-                <span className="hidden sm:inline">نسخه چاپی</span>
+                <span className="hidden sm:inline">PDF</span>
               </button>
             )}
           </div>
@@ -214,17 +246,84 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Today Activity List */}
           <div className="soft-card p-5">
             <div className="flex items-center justify-between mb-4 border-b border-slate-100 dark:border-slate-700/60 pb-3">
-              <h3 className="text-base font-bold text-slate-800 dark:text-white">
-                فعالیت‌های ثبت‌شده امروز
-              </h3>
-              <span className="text-xs text-slate-500">
-                {toPersianDigits(todayActivities.length)} فعالیت
-              </span>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-slate-800 dark:text-white">
+                  فعالیت‌های ثبت‌شده امروز
+                </h3>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-bold">
+                  {toPersianDigits(todayActivities.length)}
+                </span>
+              </div>
+
+              <button
+                onClick={onOpenAddActivity}
+                className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1 shadow-sm shadow-blue-500/20 transition-all active:scale-95"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ فعالیت جدید</span>
+              </button>
             </div>
 
+            {/* Quick Add Bar */}
+            <form onSubmit={handleQuickSubmit} className="mb-4 p-2 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-700/70 flex flex-wrap sm:flex-nowrap items-center gap-2">
+              <input
+                type="text"
+                value={quickTitle}
+                onChange={(e) => setQuickTitle(e.target.value)}
+                placeholder="ثبت سریع کار یا فعالیت برای امروز (بنویسید و اینتر بزنید)..."
+                className="flex-1 min-w-[200px] px-3 py-1.5 text-xs bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setQuickType(quickType === 'work' ? 'personal' : 'work')}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors flex items-center gap-1 ${
+                    quickType === 'work'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300'
+                      : 'border-purple-500 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300'
+                  }`}
+                  title="تغییر نوع کاری / شخصی"
+                >
+                  {quickType === 'work' ? <Briefcase className="w-3 h-3 text-blue-600" /> : <User className="w-3 h-3 text-purple-600" />}
+                  <span>{quickType === 'work' ? 'کاری' : 'شخصی'}</span>
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={!quickTitle.trim() || isQuickAdding}
+                  className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-xs font-bold transition-all flex items-center gap-1"
+                >
+                  <Send className="w-3 h-3 rotate-180" />
+                  <span>ثبت</span>
+                </button>
+              </div>
+            </form>
+
             {todayActivities.length === 0 ? (
-              <div className="text-center py-8 text-slate-400 dark:text-slate-500 text-sm">
-                هیچ فعالیتی برای امروز ثبت نشده است.
+              <div className="text-center py-8 px-4 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/40 dark:bg-slate-900/20">
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">
+                  هنوز هیچ فعالیتی برای امروز ثبت نشده است
+                </p>
+                <p className="text-xs text-slate-400 mb-4">
+                  می‌توانید همین الان با کادر بالا یا دکمه‌های زیر اولین کار امروز را اضافه کنید:
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-2.5">
+                  <button
+                    onClick={onOpenAddActivity}
+                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>افزودن فعالیت مستقیم</span>
+                  </button>
+                  <button
+                    onClick={() => onStartReport(todayDate)}
+                    className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold transition-all flex items-center gap-1.5"
+                  >
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                    <span>شروع ثبت گفت‌وگویی</span>
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="space-y-2.5">
@@ -233,16 +332,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   return (
                     <div
                       key={act.id}
-                      className="p-3 rounded-xl border border-slate-100 dark:border-slate-700/60 hover:bg-slate-50 dark:hover:bg-slate-700/30 flex items-center justify-between transition-colors"
+                      className="p-3 rounded-xl border border-slate-100 dark:border-slate-700/60 hover:bg-slate-50 dark:hover:bg-slate-700/30 flex items-center justify-between transition-colors group"
                     >
                       <div className="flex items-center gap-3">
                         <button
                           onClick={() => onToggleActivityStatus(act)}
-                          className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${
+                          className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors shrink-0 ${
                             isDone
                               ? 'bg-emerald-500 text-white'
                               : 'border-2 border-slate-300 dark:border-slate-600 hover:border-emerald-500 text-transparent'
                           }`}
+                          title={isDone ? 'علامت به عنوان نیمه‌تمام' : 'علامت به عنوان انجام‌شده'}
                         >
                           <CheckCircle2 className="w-4 h-4" />
                         </button>
@@ -251,7 +351,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             {act.title}
                           </div>
                           <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
-                            <span className={`px-1.5 py-0.2 rounded ${act.type === 'work' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'}`}>
+                            <span className={`px-1.5 py-0.2 rounded font-medium ${act.type === 'work' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'}`}>
                               {act.type === 'work' ? 'کاری' : 'شخصی'}
                             </span>
                             {act.project && <span>پروژه: {act.project}</span>}
@@ -261,13 +361,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         </div>
                       </div>
 
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                        isDone 
-                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400' 
-                          : 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400'
-                      }`}>
-                        {isDone ? 'انجام شد' : 'نیمه‌تمام'}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                          isDone 
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400' 
+                            : 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400'
+                        }`}>
+                          {isDone ? 'انجام شد' : 'نیمه‌تمام'}
+                        </span>
+
+                        <button
+                          onClick={() => {
+                            if (confirm(`آیا فعالیت «${act.title}» حذف شود؟`)) {
+                              onDeleteActivity(act.id);
+                            }
+                          }}
+                          className="p-1.5 text-slate-300 hover:text-red-500 dark:text-slate-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors opacity-70 group-hover:opacity-100"
+                          title="حذف فعالیت"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
