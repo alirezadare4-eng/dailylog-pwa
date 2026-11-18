@@ -1,7 +1,5 @@
-const CACHE_NAME = 'dailylog-v2';
+const CACHE_NAME = 'dailylog-v3';
 const ASSETS_TO_CACHE = [
-  './',
-  './index.html',
   './manifest.json',
   './icons/icon-192.svg'
 ];
@@ -30,20 +28,37 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Cache first with network fallback for navigation and static resources
+// Network-First for navigation/HTML, Cache-First for static hashed assets
 self.addEventListener('fetch', (event) => {
   // Ignore API calls or non-GET
   if (event.request.method !== 'GET' || event.request.url.includes('/api/')) {
     return;
   }
 
+  // Navigation / HTML requests: Network First, fallback to cache
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Static assets: Cache First, fallback to network
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
         return cachedResponse;
       }
       return fetch(event.request).then((networkResponse) => {
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+        if (!networkResponse || networkResponse.status !== 200) {
           return networkResponse;
         }
         const responseToCache = networkResponse.clone();
@@ -51,9 +66,6 @@ self.addEventListener('fetch', (event) => {
           cache.put(event.request, responseToCache);
         });
         return networkResponse;
-      }).catch(() => {
-        // Return offline page if needed
-        return caches.match('/index.html');
       });
     })
   );
