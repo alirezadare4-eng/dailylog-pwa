@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6" />
+      <stop offset="100%" stop-color="#1d4ed8" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#1e3a8a" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  <!-- Background Rounded Rect -->
+  <rect width="512" height="512" rx="128" fill="url(#blueGrad)" />
+  
+  <!-- Daily Notebook / Calendar Icon -->
+  <g filter="url(#shadow)" transform="translate(106, 96)">
+    <!-- White Sheet Background -->
+    <rect x="0" y="30" width="300" height="310" rx="36" fill="#ffffff" />
+    
+    <!-- Header banner in card -->
+    <rect x="0" y="30" width="300" height="75" rx="36" fill="#eff6ff" />
+    <rect x="0" y="80" width="300" height="25" fill="#eff6ff" />
+    
+    <!-- Spiral Rings -->
+    <rect x="50" y="10" width="20" height="40" rx="10" fill="#2563eb" />
+    <rect x="140" y="10" width="20" height="40" rx="10" fill="#2563eb" />
+    <rect x="230" y="10" width="20" height="40" rx="10" fill="#2563eb" />
+    
+    <!-- Checkmark Badge -->
+    <circle cx="150" cy="210" r="54" fill="#10b981" />
+    <path d="M130 210 L145 225 L175 195" fill="none" stroke="#ffffff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <!-- Subtle notes lines -->
+    <line x1="60" y1="285" x2="240" y2="285" stroke="#cbd5e1" stroke-width="8" stroke-linecap="round" />
+  </g>
+</svg>
+
